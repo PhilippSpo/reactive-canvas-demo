@@ -1,15 +1,30 @@
 <head>
-  <title>canvasIsFunMeteor</title>
+	<title>canvasIsFunMeteor</title>
 </head>
 
 <body>
-  <h1>Welcome to HTML5 Canvas!</h1>
-  <div>Add some more rectangles by double clicking :)</div>
-  {{> hello}}
+	<h1>Welcome to HTML5 Canvas!</h1>
+	<!-- <div>Add some more rectangles by double clicking :)</div> -->
+	{{> hello}}
 </body>
 
 <template name="hello">
-  <canvas id="canvas1" style="border: 1px solid black;" width="1000" height="1000"><br>
-This text is displayed if your browser does not support HTML5 Canvas.<br>
-</canvas>
+<div class="container-fluid">
+		<div class="row">
+			<div class="btn-group drawModeSelect" data-toggle="buttons">
+				<label class="btn btn-default active">
+					<input class="drawMode" type="radio" name="drawMode" id="rectangle" value="rect" autocomplete="off" checked> Rectangle
+				</label>
+				<label class="btn btn-default">
+					<input class="drawMode" type="radio" name="drawMode" id="polygon" value="poly" autocomplete="off"> Polygon
+				</label>
+			</div>
+			<button id="finishElement" type="button" class="btn btn-success">Done!</button>
+		</div>
+		<div class="row">
+			<canvas id="canvas1" style="border: 1px solid black;" width="1000" height="1000"><br>
+				This text is displayed if your browser does not support HTML5 Canvas.<br>
+			</canvas>
+		</div>
+	</div>
 </template>
