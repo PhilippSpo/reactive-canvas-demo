@@ -1,34 +1,27 @@
 if (Meteor.isClient) {
+  Meteor.subscribe('polygons');
+  Meteor.subscribe('rectangles');
 
   Template.hello.rendered = function() {
-    Meteor.subscribe('polygons');
-    Meteor.subscribe('rectangles', {
-      onReady: function() {
         init();
-      },
-      onError: function(error) {
-        console.log(error);
-      }
-    });
   };
 
   Template.hello.events({
     'change .drawMode': function(e) {
       var val = $('input[name=drawMode]:checked').val();
-      console.log(val);
-      Template.hello.canvasState.insertMode = val;
+      Template.hello.reactiveCanvas.insertMode = val;
     },
     'click #finishElement': function() {
-      Template.hello.canvasState.finishElementCreation();
+      Template.hello.reactiveCanvas.finishElementCreation();
     },
     'click #deleteElement': function() {
-      Template.hello.canvasState.selection.get().remove(true);
+      Template.hello.reactiveCanvas.selection.get().remove(true);
     },
     'click #addPoints': function() {
-      Template.hello.canvasState.enableEditingMode();
+      Template.hello.reactiveCanvas.enableEditingMode();
     },
     'click #deleteCoord': function() {
-      Template.hello.canvasState.selection.get().deleteSelectedCoord();
+      Template.hello.reactiveCanvas.selection.get().deleteSelectedCoord();
     }
   });
 
@@ -47,33 +40,9 @@ if (Meteor.isClient) {
     }
   });
 }
-// initialize the canvasState and the Rectangles
+// initialize the reactiveCanvas and the Rectangles
 init = function() {
-  Template.hello.canvasState = new CanvasState(document.getElementById('canvas1'), Rectangles, Polygons);
-  var s = Template.hello.canvasState;
-  var shapes = Rectangles.find();
-  var polygons = Polygons.find();
-
-  // observe added and removed
-  shapes.observeChanges({
-    added: function(id) {
-      s.addShape(new Rectangle(id, Rectangles, s));
-    },
-    removed: function(id) {
-      // is handled automatically at the moment
-      // if you want to have some code to handle the removing do it here
-    }
-  });
-  polygons.observeChanges({
-    added: function(id) {
-      s.addShape(new Polygon(id, Polygons, s));
-    },
-    removed: function(id) {
-      // is handled automatically at the moment
-      // if you want to have some code to handle the removing do it here
-    }
-  });
-
+  Template.hello.reactiveCanvas = new ReactiveCanvas(document.getElementById('canvas1'), Rectangles, Polygons);
 };
 
 Rectangles = new Mongo.Collection('rectangles');
