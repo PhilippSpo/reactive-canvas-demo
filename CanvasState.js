@@ -7,8 +7,9 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 	this.ctx = canvas.getContext('2d');
 	this.collection = mongoCol;
 	this.polyCollection = polyCollection;
-	this.creatingElement = false;
+	this.creatingElement = new ReactiveVar(false);
 	this.insertMode = 'rect';
+	this.createdId = new ReactiveVar(0);
 	// This complicates things a little but but fixes mouse co-ordinate problems
 	// when there's a border or padding. See getMouse for more detail
 	var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
@@ -30,7 +31,7 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 	this.shapes = []; // the collection of things to be drawn
 	this.dragging = false; // Keep track of when we are dragging
 	// the current selected object. In the future we could turn this into an array for multiple selection
-	this.selection = null;
+	this.selection = new ReactiveVar(null);
 	this.dragoffx = 0; // See mousedown and mousemove events for explanation
 	this.dragoffy = 0;
 
@@ -62,13 +63,26 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		var l = shapes.length;
 		// tmp var if one gets selected
 		var tmpSelected = false;
-		if (myState.creatingElement === true) {
-			if (!myState.selectedId) {
-				console.log('Nothing selected to add something onto!');
-				return;
+		var alreadySelected = myState.selection.get();
+		if (myState.creatingElement.get() === true) {
+			var newPoint = {
+				x: mouse.x,
+				y: mouse.y
+			};
+			if (myState.createdId.get() === 0) {
+				if (alreadySelected === null) {
+					console.log('Nothing selected to add something onto!');
+					return;
+				}
 			}
 			if (myState.insertMode === 'poly') {
-				addPointToPolyDoc(e, myState, myState.selectedId, polyCollection);
+				if (myState.createdId.get() !== 0) {
+					addPointToPolyDoc(newPoint, myState, myState.createdId.get(), polyCollection);
+					return;
+				}
+			}
+			if (alreadySelected !== null) {
+				alreadySelected.addPoint(newPoint);
 			}
 			return;
 		}
@@ -76,9 +90,8 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 			var mySel = shapes[i];
 			if (shapes[i].contains(mx, my) && tmpSelected === false) {
 				// check if this shape is already selected
-				if (myState.selection === mySel) {
+				if (myState.selection.get() === mySel) {
 					if (shapes[i].touchedAtHandles(mx, my)) {
-						console.log('touch at handle');
 						// in this case the shape is touched at the handles -> resize
 						// pass event to shape event handler and begin possible resizing
 						if (mySel instanceof Shape) {
@@ -93,12 +106,19 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 						// in this case the shape is touched, but NOT at the handles -> drag
 						// Keep track of where in the object we clicked
 						// so we can move it smoothly (see mousemove)
-						myState.dragoffx = mx - mySel.x;
-						myState.dragoffy = my - mySel.y;
+						if (mySel instanceof Shape) {
+							myState.dragoffx = mx - mySel.x;
+							myState.dragoffy = my - mySel.y;
+						}
+						if (mySel instanceof Polygon) {
+							// store drag start points
+							myState.dragoffx = mx;
+							myState.dragoffy = my;
+						}
 						myState.dragging = true;
 					}
 				}
-				myState.selection = mySel;
+				myState.selection.set(mySel);
 				// set the state of the shape as selected
 				mySel.selected = true;
 				myState.valid = false;
@@ -106,20 +126,15 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 				// return;
 			} else {
 				// unset the state of the shape as selected
-				mySel.selected = false;
+				mySel.deselect();
 				myState.valid = false;
 			}
 		}
 		// if no shape was touched
 		if (tmpSelected === false) {
-			myState.selection = null;
+			myState.selection.set(null);
 		}
 		// havent returned means we have failed to select anything.
-		// If there was an object selected, we deselect it
-		// if (myState.selection) {
-		//   myState.selection = null;
-		//   myState.valid = false; // Need to clear the old selection border
-		// }
 
 	}
 	canvas.addEventListener('mousemove', mousemove, true);
@@ -130,18 +145,29 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		e.stopPropagation();
 		var mouse = myState.getMouse(e);
 		this.style.cursor = 'auto';
+		var mySel = myState.selection.get();
 		if (myState.dragging) {
-			// We don't want to drag the object by its top-left corner, we want to drag it
-			// from where we clicked. Thats why we saved the offset and use it here
-			myState.selection.x = mouse.x - myState.dragoffx;
-			myState.selection.y = mouse.y - myState.dragoffy;
-			myState.valid = false; // Something's dragging so we must redraw
-			myState.selection.valid = false; // store information to database when rect gets drawn
+			if (mySel instanceof Shape) {
+				// We don't want to drag the object by its top-left corner, we want to drag it
+				// from where we clicked. Thats why we saved the offset and use it here
+				mySel.x = mouse.x - myState.dragoffx;
+				mySel.y = mouse.y - myState.dragoffy;
+				myState.valid = false; // Something's dragging so we must redraw
+				mySel.valid = false; // store information to database when rect gets drawn
+			}
+			if (mySel instanceof Polygon) {
+				var translation = {
+					x: mouse.x - myState.dragoffx,
+					y: mouse.y - myState.dragoffy
+				};
+				mySel.move(e, translation);
+				myState.dragoffx = mouse.x;
+				myState.dragoffy = mouse.y;
+			}
 		}
-		var mySel = myState.selection;
 		if (myState.resizing) {
 			if (mySel instanceof Shape) {
-				mouseMoveSelected(e, myState.selection);
+				mouseMoveSelected(e, mySel);
 			}
 			if (mySel instanceof Polygon) {
 				mySel.mouseMove(e, mouse);
@@ -157,7 +183,9 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 	canvas.addEventListener('dblclick', dblclick, true);
 
 	function dblclick(e) {
-		console.log(myState);
+		if (myState.creatingElement.get() === true) {
+			return;
+		}
 		var mouse = myState.getMouse(e);
 		var r = Math.floor(Math.random() * 255);
 		var g = Math.floor(Math.random() * 255);
@@ -181,9 +209,8 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 			});
 		}
 		if (myState.insertMode === 'poly') {
-			console.log('createPoly');
 			counter = myState.polyCollection.find().fetch().length;
-			myState.selectedId = myState.polyCollection.insert({
+			var id = myState.polyCollection.insert({
 				coords: [{
 					x: mouse.x,
 					y: mouse.y
@@ -195,8 +222,8 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 				},
 				name: 'Poly ' + counter
 			});
-			console.log('add point', mouse.x, mouse.y);
-			myState.creatingElement = true;
+			myState.createdId.set(id);
+			myState.creatingElement.set(true);
 		}
 	}
 
@@ -315,7 +342,7 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		}
 
 		myState.valid = false; // something is resizing so we need to redraw
-		myState.selection.valid = false; // store information to database when rect gets drawn
+		myState.selection.get().valid = false; // store information to database when rect gets drawn
 	};
 	// **** Options! ****
 
@@ -343,6 +370,7 @@ CanvasState.prototype.draw = function() {
 	if (!this.valid) {
 		var ctx = this.ctx;
 		var shapes = this.shapes;
+		var mySel = this.selection.get();
 		this.clear();
 
 		// ** Add stuff you want drawn in the background all the time here **
@@ -351,7 +379,7 @@ CanvasState.prototype.draw = function() {
 		var l = shapes.length;
 		for (var i = 0; i < l; i++) {
 			var shape = shapes[i];
-			if (this.selection !== shape) {
+			if (mySel !== shape) {
 				// draw this shape as last
 				// We can skip the drawing of elements that have moved off the screen:
 				if (shape.x > this.width || shape.y > this.height ||
@@ -360,19 +388,8 @@ CanvasState.prototype.draw = function() {
 			}
 		}
 		// draw selected shape
-		if (this.selection !== null) {
-			this.selection.draw(ctx);
-		}
-
-		// draw selection
-		// right now this is just a stroke along the edge of the selected Shape
-		if (this.selection !== null) {
-			// ctx.save();
-			//     ctx.strokeStyle = this.selectionColor;
-			//     ctx.lineWidth = this.selectionWidth;
-			//     var mySel = this.selection;
-			//     ctx.strokeRect(mySel.x, mySel.y, mySel.w, mySel.h);
-			//     ctx.restore();
+		if (mySel !== null) {
+			mySel.draw(ctx);
 		}
 
 		// ** Add stuff you want drawn on top all the time here **
@@ -380,7 +397,6 @@ CanvasState.prototype.draw = function() {
 		this.valid = true;
 	}
 };
-
 
 // Creates an object with x and y defined, set to the mouse position relative to the state's canvas
 // If you wanna be super-correct this can be tricky, we have to worry about padding and borders
@@ -411,4 +427,41 @@ CanvasState.prototype.getMouse = function(e) {
 		x: mx,
 		y: my
 	};
+};
+
+CanvasState.prototype.enableEditingMode = function() {
+	this.creatingElement.set(true);
+};
+
+CanvasState.prototype.finishElementCreation = function() {
+	var mySel = this.selection.get();
+	// check if requirements for creating a valid element are fulfilled
+	if (!mySel.mayBeCreated()) {
+		// not fulfilled -> remove from database
+		mySel.collection.remove({
+			_id: mySel.id
+		});
+	}
+	this.creatingElement.set(false);
+};
+
+// checks if two points are close enough to each other depending on the closeEnough param
+checkCloseEnough = function(p1, p2, closeEnough) {
+	return Math.abs(p1 - p2) < closeEnough;
+};
+
+// Draws a white rectangle with a black border around it
+drawRectWithBorder = function(x, y, sideLength, ctx, borderColor, bgColor) {
+	if (!borderColor) {
+		borderColor = 'black';
+	}
+	if (!bgColor) {
+		bgColor = 'white';
+	}
+	ctx.save();
+	ctx.fillStyle = borderColor;
+	ctx.fillRect(x - (sideLength / 2), y - (sideLength / 2), sideLength, sideLength);
+	ctx.fillStyle = bgColor;
+	ctx.fillRect(x - ((sideLength - 1) / 2), y - ((sideLength - 1) / 2), sideLength - 1, sideLength - 1);
+	ctx.restore();
 };

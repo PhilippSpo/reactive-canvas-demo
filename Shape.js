@@ -23,6 +23,8 @@ Shape = function(id, shapeCollection, canvasStateObj) {
   this.valid = true;
   this.opacity = 0.6;
   this.name = shape.name;
+  this.canvasStateObj = canvasStateObj;
+  this.selectedCoord = new ReactiveVar(null);
   var self = this;
 
   Tracker.autorun(function() {
@@ -30,16 +32,7 @@ Shape = function(id, shapeCollection, canvasStateObj) {
       _id: self.id
     });
     if (!shape) {
-      // remove shape from canvas when it has been removed in the db
-      var index = canvasStateObj.shapes.indexOf(self);
-      if (index > -1) {
-        canvasStateObj.shapes.splice(index, 1);
-      }
-      if(canvasStateObj.selection === self){
-        canvasStateObj.selection = null;
-      }
-      // tell canvas to redraw
-      canvasStateObj.valid = false;
+      self.remove();
       return;
     }
     var coords = shape.coords;
@@ -57,6 +50,24 @@ Shape = function(id, shapeCollection, canvasStateObj) {
     canvasStateObj.valid = false;
   });
 };
+// remove shape from canvas and delete reference
+Shape.prototype.remove = function(removeFromDb) {
+  if(removeFromDb){
+    this.collection.remove({_id: this.id});
+  }
+  // remove shape from canvas when it has been removed in the db
+  var index = this.canvasStateObj.shapes.indexOf(this);
+  if (index > -1) {
+    this.canvasStateObj.shapes.splice(index, 1);
+  }
+  if(this.canvasStateObj.selection.get() === this){
+    this.canvasStateObj.selection.set(null);
+    this.canvasStateObj.creatingElement.set(false);
+  }
+  // tell canvas to redraw
+  this.canvasStateObj.valid = false;
+};
+
 Shape.prototype.setOpacity = function(opacity){
   var c = this.color;
   if(!this.color){
@@ -180,17 +191,7 @@ Shape.prototype.touchedAtHandles = function(mx, my) {
   }
 };
 
-// Draws a white rectangle with a black border around it
-drawRectWithBorder = function(x, y, sideLength, ctx) {
-  ctx.save();
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(x - (sideLength / 2), y - (sideLength / 2), sideLength, sideLength);
-  ctx.fillStyle = "rgba(255,255,255,1)";
-  ctx.fillRect(x - ((sideLength - 1) / 2), y - ((sideLength - 1) / 2), sideLength - 1, sideLength - 1);
-  ctx.restore();
+Shape.prototype.deselect = function() {
+  this.selected = false;
+  this.selectedCoord.set(null);
 };
-
-// checks if two points are close enough to each other depending on the closeEnough param
-function checkCloseEnough(p1, p2, closeEnough) {
-  return Math.abs(p1 - p2) < closeEnough;
-}

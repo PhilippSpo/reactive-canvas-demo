@@ -1,4 +1,8 @@
 if (Meteor.isClient) {
+  Session.setDefault('shapeSelectedOnCanvas', false);
+  Session.setDefault('coordSelectedOnCanvas', false);
+  Session.setDefault('isCreatingElementOnCanvas', false);
+  Session.setDefault('addPoints', false);
 
   Template.hello.rendered = function() {
     Meteor.subscribe('polygons');
@@ -14,13 +18,37 @@ if (Meteor.isClient) {
   };
 
   Template.hello.events({
-    'change .drawMode': function (e) {
+    'change .drawMode': function(e) {
       var val = $('input[name=drawMode]:checked').val();
       console.log(val);
       Template.hello.canvasState.insertMode = val;
     },
-    'click #finishElement': function () {
-      Template.hello.canvasState.creatingElement = false;
+    'click #finishElement': function() {
+      Template.hello.canvasState.finishElementCreation();
+    },
+    'click #deleteElement': function() {
+      Template.hello.canvasState.selection.get().remove(true);
+    },
+    'click #addPoints': function() {
+      Template.hello.canvasState.enableEditingMode();
+    },
+    'click #deleteCoord': function() {
+      Template.hello.canvasState.selection.get().deleteSelectedCoord();
+    }
+  });
+
+  Template.hello.helpers({
+    selected: function() {
+      return Session.get('shapeSelectedOnCanvas');
+    },
+    isCreating: function() {
+      return Session.get('isCreatingElementOnCanvas');
+    },
+    showAddPoints: function() {
+      return Session.get('addPoints');
+    },
+    coordSelected: function() {
+      return Session.get('coordSelectedOnCanvas');
     }
   });
 }
@@ -31,7 +59,7 @@ init = function() {
   var shapes = Shapes.find();
   var polygons = Polygons.find();
   s.shapes = [];
-  
+
   // observe added and removed
   shapes.observeChanges({
     added: function(id) {
@@ -49,7 +77,38 @@ init = function() {
       // ...
     }
   });
-  
+
+  Tracker.autorun(function() {
+    var selection = Template.hello.canvasState.selection.get();
+    if (selection !== null) {
+      Session.set('shapeSelectedOnCanvas', true);
+      if (selection instanceof Polygon) {
+        Session.set('addPoints', true);
+      } else {
+        Session.set('addPoints', false);
+      }
+    } else {
+      Session.set('shapeSelectedOnCanvas', false);
+      Session.set('addPoints', false);
+    }
+  });
+  Tracker.autorun(function() {
+    var isCreating = Template.hello.canvasState.creatingElement.get();
+    Session.set('isCreatingElementOnCanvas', isCreating);
+  });
+  Tracker.autorun(function() {
+    var selection = Template.hello.canvasState.selection.get();
+    if (selection !== null) {
+      if (selection.selectedCoord.get() !== null) {
+        Session.set('coordSelectedOnCanvas', true);
+      } else {
+        Session.set('coordSelectedOnCanvas', false);
+      }
+    } else {
+      Session.set('coordSelectedOnCanvas', false);
+    }
+  });
+
 };
 
 Shapes = new Mongo.Collection('shapes');

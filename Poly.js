@@ -24,8 +24,19 @@ Polygon = function(id, polyCollection, canvasStateObj) {
   this.opacity = 0.6;
   this.name = polygon.name;
   this.canvasStateObj = canvasStateObj;
+  this.selectedCoord = new ReactiveVar(null);
+  this.minPoints = 3;
 
   var self = this;
+
+  // set this as selected if it was just created in the current browser
+  Tracker.autorun(function () {
+    if(canvasStateObj.createdId.get() === id){
+      canvasStateObj.selection.set(self);
+      self.deselect();
+      canvasStateObj.valid = false;
+    }
+  });
 
   Tracker.autorun(function() {
     var polygon = polyCollection.findOne({
@@ -33,12 +44,12 @@ Polygon = function(id, polyCollection, canvasStateObj) {
     });
     if (!polygon) {
       // remove polygon from canvas when it has been removed in the db
-      var index = canvasStateObj.polygons.indexOf(self);
+      var index = canvasStateObj.shapes.indexOf(self);
       if (index > -1) {
-        canvasStateObj.polygons.splice(index, 1);
+        canvasStateObj.shapes.splice(index, 1);
       }
-      if (canvasStateObj.selection === self) {
-        canvasStateObj.selection = null;
+      if (canvasStateObj.selection.get() === self) {
+        canvasStateObj.selection.set(null);
       }
       // tell canvas to redraw
       canvasStateObj.valid = false;
@@ -55,6 +66,23 @@ Polygon = function(id, polyCollection, canvasStateObj) {
     // only set canvas to invalid and not the polygon (so that the db doesnt get populated with the same change twice)
     canvasStateObj.valid = false;
   });
+};
+// remove shape from canvas and delete reference
+Polygon.prototype.remove = function(removeFromDb) {
+  if(removeFromDb){
+    this.collection.remove({_id: this.id});
+  }
+  // remove shape from canvas when it has been removed in the db
+  var index = this.canvasStateObj.shapes.indexOf(this);
+  if (index > -1) {
+    this.canvasStateObj.shapes.splice(index, 1);
+  }
+  if(this.canvasStateObj.selection.get() === this){
+    this.canvasStateObj.selection.set(null);
+    this.canvasStateObj.creatingElement.set(false);
+  }
+  // tell canvas to redraw
+  this.canvasStateObj.valid = false;
 };
 Polygon.prototype.setOpacity = function(opacity) {
   var c = this.color;
@@ -141,7 +169,13 @@ Polygon.prototype.draw = function(ctx) {
 Polygon.prototype.drawHandles = function(ctx) {
   for (var i in this.coords) {
     var point = this.coords[i];
-    drawRectWithBorder(point.x, point.y, this.closeEnough, ctx);
+    var borderColor = 'rgba(0,0,0,1)';
+    var bgColor = 'rgba(255,255,255,1)';
+    if(this.selectedCoord.get() === i){
+      borderColor= 'rgba(0,0,255,1)';
+      bgColor= 'rgba(100,100,255,1)';
+    }
+    drawRectWithBorder(point.x, point.y, this.closeEnough, ctx, borderColor, bgColor);
   }
 };
 
@@ -188,12 +222,14 @@ Polygon.prototype.touchedAtHandlesReturnPoint = function(mx, my) {
 };
 
 Polygon.prototype.mouseDown = function(e, mouse) {
-  console.log('mouseDown');
   this.selectedPoint = this.touchedAtHandlesReturnPoint(mouse.x, mouse.y);
   for (var i in this.coords) {
     var point = this.coords[i];
     if (point === this.selectedPoint) {
+      // selected index is for moving the coord
       this.selectedIndex = i;
+      // selected coord is for deleting/selecting the coord
+      this.selectedCoord.set(i);
     }
   }
 };
@@ -213,43 +249,52 @@ Polygon.prototype.mouseMove = function(e, mouse) {
   
 };
 
-// Polygon.prototype.addPoint = function(x, y) {
-//   console.log('add point', x, y);
-//   var newPoint = {x: x, y: y};
-//   this.coords.push(newPoint);
-//   // invalidate to redraw
-//   this.valid = false;
-//   // store change to db
-//   this.collection.update({
-//     _id: this.id
-//   }, {
-//     $push: {
-//       coords: newPoint
-//     }
-//   });
-// };
-
-// Draws a white rectangle with a black border around it
-drawRectWithBorder = function(x, y, sideLength, ctx) {
-  ctx.save();
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(x - (sideLength / 2), y - (sideLength / 2), sideLength, sideLength);
-  ctx.fillStyle = "rgba(255,255,255,1)";
-  ctx.fillRect(x - ((sideLength - 1) / 2), y - ((sideLength - 1) / 2), sideLength - 1, sideLength - 1);
-  ctx.restore();
+// function that moves all points of the polygon with the given translation
+Polygon.prototype.move = function(e, translation) {
+  // move all coords
+  for (var i in this.coords) {
+    var x = this.coords[i].x;
+    var y = this.coords[i].y;
+    this.coords[i].x = x+translation.x;
+    this.coords[i].y = y+translation.y;
+  }
+  // redraw
+  this.valid = false;
+  this.canvasStateObj.valid = false;
 };
 
-// checks if two points are close enough to each other depending on the closeEnough param
-function checkCloseEnough(p1, p2, closeEnough) {
-  return Math.abs(p1 - p2) < closeEnough;
-}
+// function that checks wether this Polygon may be stored
+Polygon.prototype.mayBeCreated = function() {
+  // check if the min number of points is fulfilled
+  if(this.coords.length >= this.minPoints){
+    return true;
+  }
+  return false;
+};
 
-addPointToPolyDoc = function(event, canvasStateObj, polygonId, polyCollection) {
-  var mouse = canvasStateObj.getMouse(event);
-  var newPoint = {
-    x: mouse.x,
-    y: mouse.y
-  };
+Polygon.prototype.deselect = function() {
+  this.selected = false;
+  this.selectedCoord.set(null);
+};
+
+// deletes the selected coord point and stores the change to the db
+Polygon.prototype.deleteSelectedCoord = function() {
+  var coordIndex = this.selectedCoord.get();
+  // remove coord from coords store
+  this.coords.splice(coordIndex, 1);
+  // invalidate to get the change into the db
+  this.valid = false;
+  // rerender to see the change
+  this.canvasStateObj.valid = false;
+  // unselect coord
+  this.selectedCoord.set(null);
+};
+
+Polygon.prototype.addPoint = function(newPoint) {
+  addPointToPolyDoc(newPoint, this.canvasStateObj, this.id, this.collection);
+};
+
+addPointToPolyDoc = function(newPoint, canvasStateObj, polygonId, polyCollection) {
   // just update the database, since the existing element will redraw itself with the update from the database
   polyCollection.update({
     _id: polygonId

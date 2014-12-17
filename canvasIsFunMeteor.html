@@ -19,7 +19,12 @@
 					<input class="drawMode" type="radio" name="drawMode" id="polygon" value="poly" autocomplete="off"> Polygon
 				</label>
 			</div>
-			<button id="finishElement" type="button" class="btn btn-success">Done!</button>
+			<label class="{{#unless selected}}hidden{{/unless}}">Area:</label>
+			<button id="finishElement" type="button" class="btn btn-success {{#unless isCreating}}hidden{{/unless}}">Done!</button>
+			<button id="deleteElement" type="button" class="btn btn-danger {{#unless selected}}hidden{{/unless}}">Delete</button>
+			<button id="addPoints" type="button" class="btn btn-default {{#unless showAddPoints}}hidden{{/unless}}">Add Points</button>
+			<label class="{{#unless coordSelected}}hidden{{/unless}}">Coordinate:</label>
+			<button id="deleteCoord" type="button" class="btn btn-danger {{#unless coordSelected}}hidden{{/unless}}">Delete</button>
 		</div>
 		<div class="row">
 			<canvas id="canvas1" style="border: 1px solid black;" width="1000" height="1000"><br>
