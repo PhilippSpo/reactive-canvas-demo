@@ -1,0 +1,3 @@
+[submodule "packages/reactive-canvas"]
+	path = packages/reactive-canvas
+	url = https://github.com/PhilippSpo/reactive-canvas
