@@ -1,8 +1,8 @@
-// By Simon Sarris
-// www.simonsarris.com
-// sarris@acm.org
+// By Philipp Sporrer
+// https://github.com/PhilippSpo
+// philipp.sporrer@planifcia.de
 //
-// Last update December 2011
+// Last update December 2014
 //
 // Free to use and distribute at will
 // So long as you are nice to people, etc

@@ -1,3 +1,22 @@
+// By Philipp Sporrer
+// https://github.com/PhilippSpo
+// philipp.sporrer@planifcia.de
+//
+// Last update December 2014
+//
+// Free to use and distribute at will
+// So long as you are nice to people, etc
+
+if(Meteor.isClient){
+	// session defaults
+	Session.setDefault('shapeSelectedOnCanvas', false);
+	Session.setDefault('coordSelectedOnCanvas', false);
+	Session.setDefault('isCreatingElementOnCanvas', false);
+	Session.setDefault('addPoints', false);
+}
+
+// Constructor for Polygon objects to hold data for all drawn objects.
+// For now they will just be defined as rectangles.
 CanvasState = function(canvas, mongoCol, polyCollection) {
 	// **** First some setup! ****
 
@@ -49,6 +68,7 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		e.preventDefault();
 		return false;
 	}, false);
+
 	// Up, down, and move are for dragging
 	canvas.addEventListener('mousedown', mousedown, true);
 	canvas.addEventListener('touchstart', mousedown, true);
@@ -94,8 +114,8 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 					if (shapes[i].touchedAtHandles(mx, my)) {
 						// in this case the shape is touched at the handles -> resize
 						// pass event to shape event handler and begin possible resizing
-						if (mySel instanceof Shape) {
-							mouseDownSelected(e, mySel);
+						if (mySel instanceof Rectangle) {
+							mySel.mouseDownSelected(e, mouse);
 							myState.resizing = true;
 						}
 						if (mySel instanceof Polygon) {
@@ -106,7 +126,7 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 						// in this case the shape is touched, but NOT at the handles -> drag
 						// Keep track of where in the object we clicked
 						// so we can move it smoothly (see mousemove)
-						if (mySel instanceof Shape) {
+						if (mySel instanceof Rectangle) {
 							myState.dragoffx = mx - mySel.x;
 							myState.dragoffy = my - mySel.y;
 						}
@@ -137,6 +157,8 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		// havent returned means we have failed to select anything.
 
 	}
+
+	// add mouse move handlers
 	canvas.addEventListener('mousemove', mousemove, true);
 	canvas.addEventListener('touchmove', mousemove, true);
 
@@ -147,7 +169,7 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		this.style.cursor = 'auto';
 		var mySel = myState.selection.get();
 		if (myState.dragging) {
-			if (mySel instanceof Shape) {
+			if (mySel instanceof Rectangle) {
 				// We don't want to drag the object by its top-left corner, we want to drag it
 				// from where we clicked. Thats why we saved the offset and use it here
 				mySel.x = mouse.x - myState.dragoffx;
@@ -166,8 +188,8 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 			}
 		}
 		if (myState.resizing) {
-			if (mySel instanceof Shape) {
-				mouseMoveSelected(e, mySel);
+			if (mySel instanceof Rectangle) {
+				mySel.mouseMoveResize(e, mouse);
 			}
 			if (mySel instanceof Polygon) {
 				mySel.mouseMove(e, mouse);
@@ -177,7 +199,10 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 	canvas.addEventListener('mouseup', function(e) {
 		myState.dragging = false;
 		myState.resizing = false;
-		mouseUpSelected(e);
+		var selectedElement = myState.selection.get();
+		if (selectedElement instanceof Rectangle) {
+			selectedElement.mouseUpSelected(e);
+		}
 	}, true);
 	// double click for making new shapes
 	canvas.addEventListener('dblclick', dblclick, true);
@@ -191,7 +216,7 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		var g = Math.floor(Math.random() * 255);
 		var b = Math.floor(Math.random() * 255);
 		if (myState.insertMode === 'rect') {
-			// myState.addShape(new Shape(mouse.x - 10, mouse.y - 10, 20, 20, 'rgba(' + r + ',' + g + ',' + b + ',.6)'));
+			// myState.addShape(new Rectangle(mouse.x - 10, mouse.y - 10, 20, 20, 'rgba(' + r + ',' + g + ',' + b + ',.6)'));
 			counter = myState.collection.find().fetch().length;
 			myState.collection.insert({
 				coords: {
@@ -205,7 +230,7 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 					g: g,
 					b: b
 				},
-				name: 'Shape ' + counter
+				name: 'Rectangle ' + counter
 			});
 		}
 		if (myState.insertMode === 'poly') {
@@ -227,131 +252,43 @@ CanvasState = function(canvas, mongoCol, polyCollection) {
 		}
 	}
 
-	// mouse down handler for selected state
-	mouseDownSelected = function(e, shape) {
-		var mouse = myState.getMouse(e);
-		var mouseX = mouse.x;
-		var mouseY = mouse.y;
-		var self = shape;
-
-		// if there isn't a rect yet
-		if (self.w === undefined) {
-			self.x = mouseY;
-			self.y = mouseX;
-			myState.dragBR = true;
-		}
-
-		// if there is, check which corner
-		//   (if any) was clicked
-		//
-		// 4 cases:
-		// 1. top left
-		else if (checkCloseEnough(mouseX, self.x, self.closeEnough) && checkCloseEnough(mouseY, self.y, self.closeEnough)) {
-			myState.dragTL = true;
-			e.target.style.cursor = 'nw-resize';
-		}
-		// 2. top right
-		else if (checkCloseEnough(mouseX, self.x + self.w, self.closeEnough) && checkCloseEnough(mouseY, self.y, self.closeEnough)) {
-			myState.dragTR = true;
-			e.target.style.cursor = 'ne-resize';
-		}
-		// 3. bottom left
-		else if (checkCloseEnough(mouseX, self.x, self.closeEnough) && checkCloseEnough(mouseY, self.y + self.h, self.closeEnough)) {
-			myState.dragBL = true;
-			e.target.style.cursor = 'sw-resize';
-		}
-		// 4. bottom right
-		else if (checkCloseEnough(mouseX, self.x + self.w, self.closeEnough) && checkCloseEnough(mouseY, self.y + self.h, self.closeEnough)) {
-			myState.dragBR = true;
-			e.target.style.cursor = 'se-resize';
-		}
-		// (5.) none of them
-		else {
-			// handle not resizing
-		}
-		myState.valid = false; // something is resizing so we need to redraw
-	};
-	mouseUpSelected = function(e) {
-		myState.dragTL = myState.dragTR = myState.dragBL = myState.dragBR = false;
-	};
-	mouseMoveSelected = function(e, shape) {
-		var mouse = myState.getMouse(e);
-		var mouseX = mouse.x;
-		var mouseY = mouse.y;
-
-		if (myState.dragTL) {
-			e.target.style.cursor = 'nw-resize';
-			// switch to top right handle
-			if (((shape.x + shape.w) - mouseX) < 0) {
-				myState.dragTL = false;
-				myState.dragTR = true;
-			}
-			// switch to top bottom left
-			if (((shape.y + shape.h) - mouseY) < 0) {
-				myState.dragTL = false;
-				myState.dragBL = true;
-			}
-			shape.w += shape.x - mouseX;
-			shape.h += shape.y - mouseY;
-			shape.x = mouseX;
-			shape.y = mouseY;
-		} else if (myState.dragTR) {
-			e.target.style.cursor = 'ne-resize';
-			// switch to top left handle
-			if ((shape.x - mouseX) > 0) {
-				myState.dragTR = false;
-				myState.dragTL = true;
-			}
-			// switch to bottom right handle
-			if (((shape.y + shape.h) - mouseY) < 0) {
-				myState.dragTR = false;
-				myState.dragBR = true;
-			}
-			shape.w = Math.abs(shape.x - mouseX);
-			shape.h += shape.y - mouseY;
-			shape.y = mouseY;
-		} else if (myState.dragBL) {
-			e.target.style.cursor = 'sw-resize';
-			// switch to bottom right handle
-			if (((shape.x + shape.w) - mouseX) < 0) {
-				myState.dragBL = false;
-				myState.dragBR = true;
-			}
-			// switch to top left handle
-			if ((shape.y - mouseY) > 0) {
-				myState.dragBL = false;
-				myState.dragTL = true;
-			}
-			shape.w += shape.x - mouseX;
-			shape.h = Math.abs(shape.y - mouseY);
-			shape.x = mouseX;
-		} else if (myState.dragBR) {
-			e.target.style.cursor = 'se-resize';
-			// switch to bottom left handle
-			if ((shape.x - mouseX) > 0) {
-				myState.dragBR = false;
-				myState.dragBL = true;
-			}
-			// switch to top right handle
-			if ((shape.y - mouseY) > 0) {
-				myState.dragBR = false;
-				myState.dragTR = true;
-			}
-			shape.w = Math.abs(shape.x - mouseX);
-			shape.h = Math.abs(shape.y - mouseY);
-		}
-
-		myState.valid = false; // something is resizing so we need to redraw
-		myState.selection.get().valid = false; // store information to database when rect gets drawn
-	};
 	// **** Options! ****
-
-	this.selectionColor = '#000000';
-	this.selectionWidth = 0.5;
 	this.interval = 30;
 	setInterval(function() {
 		myState.draw();
 	}, myState.interval);
+
+	// **** State tracking with sessions ****
+	Tracker.autorun(function() {
+		var selection = myState.selection.get();
+		if (selection !== null) {
+			Session.set('shapeSelectedOnCanvas', true);
+			if (selection instanceof Polygon) {
+				Session.set('addPoints', true);
+			} else {
+				Session.set('addPoints', false);
+			}
+		} else {
+			Session.set('shapeSelectedOnCanvas', false);
+			Session.set('addPoints', false);
+		}
+	});
+	Tracker.autorun(function() {
+		var isCreating = myState.creatingElement.get();
+		Session.set('isCreatingElementOnCanvas', isCreating);
+	});
+	Tracker.autorun(function() {
+		var selection = myState.selection.get();
+		if (selection !== null) {
+			if (selection.selectedCoord.get() !== null) {
+				Session.set('coordSelectedOnCanvas', true);
+			} else {
+				Session.set('coordSelectedOnCanvas', false);
+			}
+		} else {
+			Session.set('coordSelectedOnCanvas', false);
+		}
+	});
 };
 
 CanvasState.prototype.addShape = function(shape) {
@@ -392,8 +329,6 @@ CanvasState.prototype.draw = function() {
 			mySel.draw(ctx);
 		}
 
-		// ** Add stuff you want drawn on top all the time here **
-
 		this.valid = true;
 	}
 };
@@ -429,13 +364,13 @@ CanvasState.prototype.getMouse = function(e) {
 	};
 };
 
+// determin that the next click/mouseDown event will add a point to the selected element
 CanvasState.prototype.enableEditingMode = function() {
 	this.creatingElement.set(true);
 };
-
+// check if requirements for creating a valid element are fulfilled
 CanvasState.prototype.finishElementCreation = function() {
 	var mySel = this.selection.get();
-	// check if requirements for creating a valid element are fulfilled
 	if (!mySel.mayBeCreated()) {
 		// not fulfilled -> remove from database
 		mySel.collection.remove({

@@ -1,15 +1,15 @@
-// By Simon Sarris
-// www.simonsarris.com
-// sarris@acm.org
+// By Philipp Sporrer
+// https://github.com/PhilippSpo
+// philipp.sporrer@planifcia.de
 //
-// Last update December 2011
+// Last update December 2014
 //
 // Free to use and distribute at will
 // So long as you are nice to people, etc
 
-// Constructor for Shape objects to hold data for all drawn objects.
+// Constructor for Rectangle objects to hold data for all drawn objects.
 // For now they will just be defined as rectangles.
-Shape = function(id, shapeCollection, canvasStateObj) {
+Rectangle = function(id, shapeCollection, canvasStateObj) {
   var shape = shapeCollection.findOne({
     _id: id
   });
@@ -45,22 +45,24 @@ Shape = function(id, shapeCollection, canvasStateObj) {
     self.h = coords.h || 1;
     var c = shape.color;
     self.color = c;
-    self.fill = 'rgba('+c.r+','+c.g+','+c.b+','+self.opacity+')' || '#AAAAAA';
+    self.fill = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + self.opacity + ')' || '#AAAAAA';
     // only set canvas to invalid and not the shape (so that the db doesnt get populated with the same change twice)
     canvasStateObj.valid = false;
   });
 };
 // remove shape from canvas and delete reference
-Shape.prototype.remove = function(removeFromDb) {
-  if(removeFromDb){
-    this.collection.remove({_id: this.id});
+Rectangle.prototype.remove = function(removeFromDb) {
+  if (removeFromDb) {
+    this.collection.remove({
+      _id: this.id
+    });
   }
   // remove shape from canvas when it has been removed in the db
   var index = this.canvasStateObj.shapes.indexOf(this);
   if (index > -1) {
     this.canvasStateObj.shapes.splice(index, 1);
   }
-  if(this.canvasStateObj.selection.get() === this){
+  if (this.canvasStateObj.selection.get() === this) {
     this.canvasStateObj.selection.set(null);
     this.canvasStateObj.creatingElement.set(false);
   }
@@ -68,22 +70,22 @@ Shape.prototype.remove = function(removeFromDb) {
   this.canvasStateObj.valid = false;
 };
 
-Shape.prototype.setOpacity = function(opacity){
+Rectangle.prototype.setOpacity = function(opacity) {
   var c = this.color;
-  if(!this.color){
+  if (!this.color) {
     return;
   }
-  this.fill = 'rgba('+c.r+','+c.g+','+c.b+','+opacity+')';
+  this.fill = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + opacity + ')';
   this.opacity = opacity;
 };
 
 // Draws this shape to a given context
-Shape.prototype.draw = function(ctx) {
+Rectangle.prototype.draw = function(ctx) {
 
   // set opacity according to selection
   if (this.selected === true) {
     this.setOpacity(0.9);
-  }else{
+  } else {
     this.setOpacity(0.6);
   }
 
@@ -109,23 +111,23 @@ Shape.prototype.draw = function(ctx) {
   // ctx.fillRect(this.x, this.y, this.w, this.h);
   ctx.beginPath();
   ctx.moveTo(this.x, this.y);
-  ctx.lineTo(this.x+this.w,this.y);
-  ctx.lineTo(this.x+this.w, this.y+this.h);
-  ctx.lineTo(this.x, this.y+this.h);
+  ctx.lineTo(this.x + this.w, this.y);
+  ctx.lineTo(this.x + this.w, this.y + this.h);
+  ctx.lineTo(this.x, this.y + this.h);
   ctx.closePath();
   ctx.fill();
 
   // black dashed border when selected
   if (this.selected === true) {
-      ctx.lineWidth = 1;
-      ctx.strokeRect(this.x, this.y, this.w, this.h);
-    }
-    
+    ctx.lineWidth = 1;
+    ctx.strokeRect(this.x, this.y, this.w, this.h);
+  }
+
   // dashed border
   ctx.beginPath();
-    ctx.setLineDash([5]);
-    ctx.rect(this.x, this.y, this.w, this.h);
-    ctx.lineWidth = 0.7;
+  ctx.setLineDash([5]);
+  ctx.rect(this.x, this.y, this.w, this.h);
+  ctx.lineWidth = 0.7;
   ctx.stroke();
 
   // draw resize handles when selected
@@ -138,11 +140,11 @@ Shape.prototype.draw = function(ctx) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = 'black';
-  ctx.fillText(this.name, this.x+(this.w/2), this.y+(this.h/2));
+  ctx.fillText(this.name, this.x + (this.w / 2), this.y + (this.h / 2));
 };
 
-// Draw handles for resizing the Shape
-Shape.prototype.drawHandles = function(ctx) {
+// Draw handles for resizing the Rectangle
+Rectangle.prototype.drawHandles = function(ctx) {
   drawRectWithBorder(this.x, this.y, this.closeEnough, ctx);
   drawRectWithBorder(this.x + this.w, this.y, this.closeEnough, ctx);
   drawRectWithBorder(this.x + this.w, this.y + this.h, this.closeEnough, ctx);
@@ -150,7 +152,7 @@ Shape.prototype.drawHandles = function(ctx) {
 };
 
 // Determine if a point is inside the shape's bounds
-Shape.prototype.contains = function(mx, my) {
+Rectangle.prototype.contains = function(mx, my) {
   if (this.touchedAtHandles(mx, my) === true) {
     return true;
   }
@@ -172,7 +174,7 @@ Shape.prototype.contains = function(mx, my) {
 };
 
 // Determine if a point is inside the shape's handles
-Shape.prototype.touchedAtHandles = function(mx, my) {
+Rectangle.prototype.touchedAtHandles = function(mx, my) {
   // 1. top left handle
   if (checkCloseEnough(mx, this.x, this.closeEnough) && checkCloseEnough(my, this.y, this.closeEnough)) {
     return true;
@@ -191,7 +193,126 @@ Shape.prototype.touchedAtHandles = function(mx, my) {
   }
 };
 
-Shape.prototype.deselect = function() {
+Rectangle.prototype.deselect = function() {
   this.selected = false;
   this.selectedCoord.set(null);
+};
+
+// mouse down handler for selected state
+Rectangle.prototype.mouseDownSelected = function(e, mouse) {
+  var mouseX = mouse.x;
+  var mouseY = mouse.y;
+  var self = this;
+
+  // if there isn't a rect yet
+  if (self.w === undefined) {
+    self.x = mouseY;
+    self.y = mouseX;
+    this.canvasStateObj.dragBR = true;
+  }
+
+  // if there is, check which corner
+  //   (if any) was clicked
+  //
+  // 4 cases:
+  // 1. top left
+  else if (checkCloseEnough(mouseX, self.x, self.closeEnough) && checkCloseEnough(mouseY, self.y, self.closeEnough)) {
+    this.canvasStateObj.dragTL = true;
+    e.target.style.cursor = 'nw-resize';
+  }
+  // 2. top right
+  else if (checkCloseEnough(mouseX, self.x + self.w, self.closeEnough) && checkCloseEnough(mouseY, self.y, self.closeEnough)) {
+    this.canvasStateObj.dragTR = true;
+    e.target.style.cursor = 'ne-resize';
+  }
+  // 3. bottom left
+  else if (checkCloseEnough(mouseX, self.x, self.closeEnough) && checkCloseEnough(mouseY, self.y + self.h, self.closeEnough)) {
+    this.canvasStateObj.dragBL = true;
+    e.target.style.cursor = 'sw-resize';
+  }
+  // 4. bottom right
+  else if (checkCloseEnough(mouseX, self.x + self.w, self.closeEnough) && checkCloseEnough(mouseY, self.y + self.h, self.closeEnough)) {
+    this.canvasStateObj.dragBR = true;
+    e.target.style.cursor = 'se-resize';
+  }
+  // (5.) none of them
+  else {
+    // handle not resizing
+  }
+  this.canvasStateObj.valid = false; // something is resizing so we need to redraw
+};
+
+// handler for resize mouse move
+Rectangle.prototype.mouseMoveResize = function(e, mouse) {
+  var mouseX = mouse.x;
+  var mouseY = mouse.y;
+
+  if (this.canvasStateObj.dragTL) {
+    e.target.style.cursor = 'nw-resize';
+    // switch to top right handle
+    if (((this.x + this.w) - mouseX) < 0) {
+      this.canvasStateObj.dragTL = false;
+      this.canvasStateObj.dragTR = true;
+    }
+    // switch to top bottom left
+    if (((this.y + this.h) - mouseY) < 0) {
+      this.canvasStateObj.dragTL = false;
+      this.canvasStateObj.dragBL = true;
+    }
+    this.w += this.x - mouseX;
+    this.h += this.y - mouseY;
+    this.x = mouseX;
+    this.y = mouseY;
+  } else if (this.canvasStateObj.dragTR) {
+    e.target.style.cursor = 'ne-resize';
+    // switch to top left handle
+    if ((this.x - mouseX) > 0) {
+      this.canvasStateObj.dragTR = false;
+      this.canvasStateObj.dragTL = true;
+    }
+    // switch to bottom right handle
+    if (((this.y + this.h) - mouseY) < 0) {
+      this.canvasStateObj.dragTR = false;
+      this.canvasStateObj.dragBR = true;
+    }
+    this.w = Math.abs(this.x - mouseX);
+    this.h += this.y - mouseY;
+    this.y = mouseY;
+  } else if (this.canvasStateObj.dragBL) {
+    e.target.style.cursor = 'sw-resize';
+    // switch to bottom right handle
+    if (((this.x + this.w) - mouseX) < 0) {
+      this.canvasStateObj.dragBL = false;
+      this.canvasStateObj.dragBR = true;
+    }
+    // switch to top left handle
+    if ((this.y - mouseY) > 0) {
+      this.canvasStateObj.dragBL = false;
+      this.canvasStateObj.dragTL = true;
+    }
+    this.w += this.x - mouseX;
+    this.h = Math.abs(this.y - mouseY);
+    this.x = mouseX;
+  } else if (this.canvasStateObj.dragBR) {
+    e.target.style.cursor = 'se-resize';
+    // switch to bottom left handle
+    if ((this.x - mouseX) > 0) {
+      this.canvasStateObj.dragBR = false;
+      this.canvasStateObj.dragBL = true;
+    }
+    // switch to top right handle
+    if ((this.y - mouseY) > 0) {
+      this.canvasStateObj.dragBR = false;
+      this.canvasStateObj.dragTR = true;
+    }
+    this.w = Math.abs(this.x - mouseX);
+    this.h = Math.abs(this.y - mouseY);
+  }
+
+  this.canvasStateObj.valid = false; // something is resizing so we need to redraw
+  this.valid = false; // store information to database when rect gets drawn
+};
+
+Rectangle.prototype.mouseUpSelected = function(e) {
+  this.canvasStateObj.dragTL = this.canvasStateObj.dragTR = this.canvasStateObj.dragBL = this.canvasStateObj.dragBR = false;
 };
