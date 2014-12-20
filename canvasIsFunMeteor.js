@@ -2,8 +2,10 @@ if (Meteor.isClient) {
   Meteor.subscribe('polygons');
   Meteor.subscribe('rectangles');
 
+  Session.setDefault('entityId', '1ngq03g48unc2fx');
+
   Template.hello.rendered = function() {
-        init();
+    init();
   };
 
   Template.hello.events({
@@ -42,7 +44,48 @@ if (Meteor.isClient) {
 }
 // initialize the reactiveCanvas and the Rectangles
 init = function() {
-  Template.hello.reactiveCanvas = new ReactiveCanvas(document.getElementById('canvas1'), Rectangles, Polygons);
+  var canvas = document.getElementById('canvas1');
+  Template.hello.reactiveCanvas = new ReactiveCanvas(canvas, Rectangles, Polygons);
+  Template.hello.reactiveCanvas.extendPolygon = Template.hello.reactiveCanvas.extendRectangle = function() {
+    return {
+      entityId: Session.get('entityId')
+    };
+  };
+
+
+
+  Template.hello.reactiveCanvas.img = new Image();
+  Template.hello.reactiveCanvas.img.src = 'cad.jpg';
+  Template.hello.reactiveCanvas.img.onload = function() {
+
+    interval = 30;
+    setInterval(function() {
+      draw();
+    }, interval);
+    Template.hello.reactiveCanvas.redrawParent = draw;
+  };
+};
+
+scaleFactor = 1.0;
+
+draw = function() {
+
+  var canvas = document.getElementById('canvas1');
+  var context = canvas.getContext('2d');
+
+  context.save();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.restore();
+
+  context.save();
+  context.scale(scaleFactor, scaleFactor);
+  context.drawImage(Template.hello.reactiveCanvas.img, 0, 0); //, $image.width(), $image.height(), 0, 0, $image.width(), $image.height());
+  //redraw children
+
+  Template.hello.reactiveCanvas.redrawAsChild = true;
+  Template.hello.reactiveCanvas.draw();
+  context.restore();
 };
 
 Rectangles = new Mongo.Collection('rectangles');
