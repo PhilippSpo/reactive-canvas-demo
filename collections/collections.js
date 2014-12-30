@@ -36,19 +36,18 @@ if (Meteor.isServer) {
 			});
 		}
 	});
-	Meteor.methods({
-		getShape: function(id) {
-			var polygon = Polygons.findOne({
-				_id: id
-			});
-			console.log(polygon);
-			if (polygon) {
-				return polygon;
-			}
-			var rectangle = Rectangles.findOne({
-				_id: id
-			});
-			return rectangle;
-		}
-	});
+	// Meteor.methods({
+	// 	getShape: function(id) {
+	// 		var polygon = Polygons.findOne({
+	// 			_id: id
+	// 		});
+	// 		if (polygon) {
+	// 			return polygon;
+	// 		}
+	// 		var rectangle = Rectangles.findOne({
+	// 			_id: id
+	// 		});
+	// 		return rectangle;
+	// 	}
+	// });
 }

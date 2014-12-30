@@ -1,18 +1,27 @@
 Template.main.rendered = function() {
   // if there is no shapeId then show all the shapes
   // if there is a shape id only the childs of the given shape will be displayed
-  var shapeId = this.data.shapeId;
+  var shapeId = null;
+  var tmplInst = this;
   init();
-  if (shapeId) {
-    initDetailView();
-  }
+  this.autorun(function() {
+
+    if (shapeId !== Session.get('shapeId')) {
+      // delete Template.main.reactiveCanvas;
+      shapeId = Session.get('shapeId');
+      Template.main.reactiveCanvas.cleanup();
+    }
+    if (shapeId) {
+      initDetailView(tmplInst);
+    }
+  });
 };
 
-function initDetailView() {
+function initDetailView(tmplInst) {
+  var canvas = document.getElementById('canvas1');
+  var context = canvas.getContext('2d');
   Tracker.autorun(function() {
-    var canvas = document.getElementById('canvas1');
-    var context = canvas.getContext('2d');
-    var shape = Template.main.reactiveCanvas.getShapeForId(Template.instance().data.shapeId);
+    var shape = Template.main.reactiveCanvas.getShapeForId(tmplInst.data.shapeId);
     shape.visible = false;
     var dbDoc = shape.collection.findOne({
       _id: shape.id
@@ -35,25 +44,15 @@ function initDetailView() {
     // 2. clip shapw shape (so that the image gets drawn inside)
     CanvasFunctions.clipShapeOnCanvas(canvas, shape);
     // 3. draw image (to be in the background)
-    context.drawImage(Template.main.reactiveCanvas.img, 0, 0);
+    // context.drawImage(Template.main.reactiveCanvas.img, 0, 0);
     /*
      * restore() restores the canvas context to its original state
      * before we defined the clipping region
      */
 
-  });
-}
+    Template.main.reactiveCanvas.valid = false;
 
-function clearCanvas(context) {
-  context.restore();
-  // clear canvas
-  // Store the current transformation matrix
-  context.save();
-  // Use the identity matrix while clearing the canvas
-  context.setTransform(1, 0, 0, 1, 0, 0);
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  // Restore the transform
-  context.restore();
+  });
 }
 
 Template.main.events({
@@ -72,6 +71,11 @@ Template.main.events({
   },
   'click #deleteCoord': function() {
     Template.main.reactiveCanvas.selection.get().deleteSelectedCoord();
+  },
+  'click #showDetailView': function() {
+    Router.go('canvas', {
+      shapeId: Template.main.reactiveCanvas.selection.get().id
+    });
   }
 });
 
@@ -87,14 +91,19 @@ Template.main.helpers({
   },
   coordSelected: function() {
     return Session.get('coordSelectedOnCanvas');
+  },
+  name: function() {
+    if (!Template.main.reactiveCanvas || Template.main.reactiveCanvas.selection.get() === null) {
+      return;
+    }
+    return Template.main.reactiveCanvas.selection.get().id;
   }
 });
 // initialize the reactiveCanvas and the Rectangles
 init = function() {
   if (typeof Template.main.reactiveCanvas === 'undefined') {
-    console.log('init');
     var canvas = document.getElementById('canvas1');
-    Template.main.reactiveCanvas = new ReactiveCanvas(canvas, Rectangles, Polygons);
+    Template.main.reactiveCanvas = new ReactiveCanvas('canvas1', Rectangles, Polygons);
 
     var context = canvas.getContext('2d');
     Template.main.reactiveCanvas.scaleFactor = 1.0;
@@ -102,7 +111,6 @@ init = function() {
     Template.main.reactiveCanvas.img = new Image();
     Template.main.reactiveCanvas.img.src = 'cad.jpg';
     Template.main.reactiveCanvas.img.onload = function() {
-
       interval = 5000;
       setInterval(function() {
         draw();
@@ -124,6 +132,10 @@ init = function() {
 draw = function() {
 
   var canvas = document.getElementById('canvas1');
+  if (!canvas) {
+    Template.main.reactiveCanvas.valid = false;
+    return;
+  }
   var context = canvas.getContext('2d');
 
   context.save();
