@@ -2,13 +2,13 @@
 	<title>canvasIsFunMeteor</title>
 </head>
 
-<body>
+<template name="layout">
 	<h1>Welcome to HTML5 Canvas!</h1>
 	<div>Add some more elments by selecting the type and then double clicking on the canvas :)</div>
-	{{> hello}}
-</body>
+	{{> yield}}
+</template>
 
-<template name="hello">
+<template name="main">
 <div class="container-fluid">
 		<div class="row">
 			<div class="btn-group drawModeSelect" data-toggle="buttons">
@@ -19,15 +19,17 @@
 					<input class="drawMode" type="radio" name="drawMode" id="polygon" value="poly" autocomplete="off"> Polygon
 				</label>
 			</div>
-			<label class="{{#unless selected}}hidden{{/unless}}">Area:</label>
+			{{#if selected}}
+			<label class="hidden">Area:</label>
 			<button id="finishElement" type="button" class="btn btn-success {{#unless isCreating}}hidden{{/unless}}">Done!</button>
 			<button id="deleteElement" type="button" class="btn btn-danger {{#unless selected}}hidden{{/unless}}">Delete</button>
 			<button id="addPoints" type="button" class="btn btn-default {{#unless showAddPoints}}hidden{{/unless}}">Add Points</button>
+			{{/if}}
 			<label class="{{#unless coordSelected}}hidden{{/unless}}">Coordinate:</label>
 			<button id="deleteCoord" type="button" class="btn btn-danger {{#unless coordSelected}}hidden{{/unless}}">Delete</button>
 		</div>
-		<div class="row">
-			<canvas id="canvas1" style="border: 1px solid black;" width="1000" height="1000"><br>
+		<div class="canvas-wrapper row">
+			<canvas id="canvas1" style="border: 1px solid black;" width="750" height="1000"><br>
 				This text is displayed if your browser does not support HTML5 Canvas.<br>
 			</canvas>
 		</div>

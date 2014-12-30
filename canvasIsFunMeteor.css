@@ -1,1 +1,4 @@
 /* CSS declarations go here */
+.canvas-wrapper {
+	vertical-align: top;
+}
