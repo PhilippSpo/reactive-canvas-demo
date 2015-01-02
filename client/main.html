@@ -4,12 +4,14 @@
 
 <template name="layout">
 	<h1>Welcome to HTML5 Canvas!</h1>
-	<div>Add some more elments by selecting the type and then double clicking on the canvas :)</div>
-	{{> yield}}
+	<div>Add some more elements by selecting the type and then double clicking on the canvas :)</div>
+	<div id="content-container" class="layout">
+		{{> yield}}
+	</div>
 </template>
 
 <template name="main">
-<div class="container-fluid">
+	<div class="container-fluid page">
 		<div class="row">
 			<div class="btn-group drawModeSelect" data-toggle="buttons">
 				<label class="btn btn-default active">

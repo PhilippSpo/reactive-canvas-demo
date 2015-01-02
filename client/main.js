@@ -13,6 +13,13 @@ Template.main.rendered = function() {
     }
     if (shapeId) {
       initDetailView(tmplInst);
+      Template.main.reactiveCanvas.extendPolygon = Template.main.reactiveCanvas.extendRectangle = function() {
+        return {
+          parentId: shapeId
+        };
+      };
+    } else {
+      Template.main.reactiveCanvas.extendPolygon = Template.main.reactiveCanvas.extendRectangle = function() {};
     }
   });
 };
@@ -117,15 +124,6 @@ init = function() {
       }, interval);
       Template.main.reactiveCanvas.redrawParent = draw;
     };
-
-    var shapeId = Template.instance().data.shapeId;
-    if (shapeId) {
-      Template.main.reactiveCanvas.extendPolygon = Template.main.reactiveCanvas.extendRectangle = function() {
-        return {
-          parentId: shapeId
-        };
-      };
-    }
   }
 };
 
