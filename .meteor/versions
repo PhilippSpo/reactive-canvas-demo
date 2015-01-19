@@ -30,6 +30,7 @@ iron:url@1.0.6
 jquery@1.0.2
 json@1.0.2
 launch-screen@1.0.1
+less@1.0.12
 livedata@1.0.12
 logging@1.0.6
 meteor@1.1.4
@@ -43,6 +44,7 @@ observe-sequence@1.0.4
 ordered-dict@1.0.2
 philippspo:reactive-canvas@0.0.21
 random@1.0.2
+rcy:nouislider@7.0.7_2
 reactive-dict@1.0.5
 reactive-var@1.0.4
 reload@1.1.2

@@ -3,24 +3,30 @@
 </head>
 
 <template name="layout">
-	<h1>Welcome to HTML5 Canvas!</h1>
-	<div>Add some more elements by selecting the type and then double clicking on the canvas :)</div>
-	<div id="content-container" class="layout">
-		{{> yield}}
+	<div class="container">
+		<h1>Welcome to HTML5 Canvas!</h1>
+		<div>Add some more elements by selecting the type and then double clicking on the canvas :)</div>
+		<div id="content-container" class="layout">
+			{{> yield}}
+		</div>
 	</div>
 </template>
 
 <template name="main">
 	<div class="container-fluid page">
 		<div class="row">
-			<div class="btn-group drawModeSelect" data-toggle="buttons">
+			<label>Scale Slider:</label>
+			<div class="slider" id="scaleSlider"></div>
+			<label>Menu:</label>
+			<button id="createElement" type="button" class="btn btn-default">Polygon erstellen!</button>
+			<!-- <div class="btn-group drawModeSelect" data-toggle="buttons">
 				<label class="btn btn-default active">
 					<input class="drawMode" type="radio" name="drawMode" id="rectangle" value="rect" autocomplete="off" checked> Rectangle
 				</label>
 				<label class="btn btn-default">
 					<input class="drawMode" type="radio" name="drawMode" id="polygon" value="poly" autocomplete="off"> Polygon
 				</label>
-			</div>
+			</div> -->
 			{{#if selected}}
 			<label class="hidden">Area:</label>
 			<button id="finishElement" type="button" class="btn btn-success {{#unless isCreating}}hidden{{/unless}}">Done!</button>
@@ -30,9 +36,20 @@
 			{{/if}}
 			<label class="{{#unless coordSelected}}hidden{{/unless}}">Coordinate:</label>
 			<button id="deleteCoord" type="button" class="btn btn-danger {{#unless coordSelected}}hidden{{/unless}}">Delete</button>
+
+			<div>
+				<label>Edit Mode:</label>
+				<div class="onoffswitch">
+				    <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="editModeSwitch" checked="{{editModeActive}}">
+				    <label class="onoffswitch-label" for="editModeSwitch">
+				        <span class="onoffswitch-inner"></span>
+				        <span class="onoffswitch-switch"></span>
+				    </label>
+				</div>
+			</div>
 		</div>
 		<div class="canvas-wrapper row">
-			<canvas id="canvas1" style="border: 1px solid black;" width="750" height="1000"><br>
+			<canvas id="canvas1" style="border: 1px solid black;" width="750" height="500"><br>
 				This text is displayed if your browser does not support HTML5 Canvas.<br>
 			</canvas>
 		</div>
