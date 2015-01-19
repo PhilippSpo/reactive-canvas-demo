@@ -114,7 +114,7 @@ Template.main.helpers({
 init = function() {
   if (typeof Template.main.reactiveCanvas === 'undefined') {
     var canvas = document.getElementById('canvas1');
-    Template.main.reactiveCanvas = new ReactiveCanvas('canvas1', Rectangles, Polygons);
+    Template.main.reactiveCanvas = new ReactiveCanvas('canvas1', Rectangles, Polygons, '/cad.jpg');
     Template.main.reactiveCanvas.shapeClickedForDetail = function(shapeId) {
       Router.go('canvas', {
         shapeId: shapeId
@@ -123,12 +123,6 @@ init = function() {
 
     var context = canvas.getContext('2d');
     Template.main.reactiveCanvas.scaleFactor = 1.0;
-
-    // Template.main.reactiveCanvas.img = new Image();
-    // Template.main.reactiveCanvas.img.src = 'cad.jpg';
-    // Template.main.reactiveCanvas.img.onload = function() {
-    //   console.log(Template.main.reactiveCanvas.img);
-    // };
 
     interval = 5000;
     setInterval(function() {
@@ -145,18 +139,5 @@ draw = function() {
     Template.main.reactiveCanvas.valid = false;
     return;
   }
-  var context = canvas.getContext('2d');
-
-  context.save();
-  // context.setTransform(1, 0, 0, 1, 0, 0);
-  // context.clearRect(0, 0, canvas.width, canvas.height);
-  context.restore();
-
-  context.save();
-  // context.scale(Template.main.reactiveCanvas.scaleFactor, Template.main.reactiveCanvas.scaleFactor);
-  // context.drawImage(Template.main.reactiveCanvas.img, 0, 0); //, $image.width(), $image.height(), 0, 0, $image.width(), $image.height());
-  //redraw children
-
   Template.main.reactiveCanvas.draw(true);
-  context.restore();
 };

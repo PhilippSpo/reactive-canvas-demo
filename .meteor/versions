@@ -42,7 +42,7 @@ mobile-status-bar@1.0.2
 mongo@1.0.11
 observe-sequence@1.0.4
 ordered-dict@1.0.2
-philippspo:reactive-canvas@0.0.21
+philippspo:reactive-canvas@0.0.22
 random@1.0.2
 rcy:nouislider@7.0.7_2
 reactive-dict@1.0.5
