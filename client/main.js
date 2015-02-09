@@ -1,3 +1,7 @@
+Template.main.created = function () {
+  this.drawMode = new ReactiveVar('Polygon');
+};
+
 Template.main.rendered = function() {
   // if there is no shapeId then show all the shapes
   // if there is a shape id only the childs of the given shape will be displayed
@@ -35,8 +39,7 @@ function initDetailView() {
 
 Template.main.events({
   'change .drawMode': function(e) {
-    var val = $('input[name=drawMode]:checked').val();
-    ReactiveCanvasStore.floorCanvas.insertMode = val;
+    Template.instance().drawMode.set($(e.currentTarget).val());
   },
   'click #finishElement': function() {
     ReactiveCanvasStore.floorCanvas.finishElementCreation();
@@ -59,7 +62,7 @@ Template.main.events({
     ReactiveCanvasStore.floorCanvas.editMode = event.target.checked;
   },
   'click #createElement': function() {
-    ReactiveCanvasStore.floorCanvas.createShape('Polygon', null, function() {
+    ReactiveCanvasStore.floorCanvas.createShape(Template.instance().drawMode.get(), null, function() {
       var shapeId = Router.current().params.shapeId;
       if (shapeId) {
         return {

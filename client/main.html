@@ -18,24 +18,27 @@
 			<label>Scale Slider:</label>
 			<div class="slider" id="scaleSlider"></div>
 			<label>Menu:</label>
-			<button id="createElement" type="button" class="btn btn-default">Polygon erstellen!</button>
-			<!-- <div class="btn-group drawModeSelect" data-toggle="buttons">
-				<label class="btn btn-default active">
-					<input class="drawMode" type="radio" name="drawMode" id="rectangle" value="rect" autocomplete="off" checked> Rectangle
-				</label>
-				<label class="btn btn-default">
-					<input class="drawMode" type="radio" name="drawMode" id="polygon" value="poly" autocomplete="off"> Polygon
-				</label>
-			</div> -->
-			{{#if selected}}
-			<label class="hidden">Area:</label>
-			<button id="finishElement" type="button" class="btn btn-success {{#unless isCreating}}hidden{{/unless}}">Done!</button>
-			<button id="deleteElement" type="button" class="btn btn-danger {{#unless selected}}hidden{{/unless}}">Delete</button>
-			<button id="addPoints" type="button" class="btn btn-default {{#unless showAddPoints}}hidden{{/unless}}">Add Points</button>
-			<button id="showDetailView" type="button" class="btn btn-default ">Detail View</button>
-			{{/if}}
-			<label class="{{#unless coordSelected}}hidden{{/unless}}">Coordinate:</label>
-			<button id="deleteCoord" type="button" class="btn btn-danger {{#unless coordSelected}}hidden{{/unless}}">Delete</button>
+			<div class="container">
+				<div class="col-xs-3">
+					<select class="form-control drawMode">
+		  				<option>Polygon</option>
+		  				<option>Rectangle</option>
+		  			</select>
+	  			</div>
+				<div class="col-xs-9">
+					<button id="createElement" type="button" class="btn btn-default">create Shape!</button>
+					
+					{{#if selected}}
+					<label class="hidden">Area:</label>
+					<button id="finishElement" type="button" class="btn btn-success {{#unless isCreating}}hidden{{/unless}}">Done!</button>
+					<button id="deleteElement" type="button" class="btn btn-danger {{#unless selected}}hidden{{/unless}}">Delete</button>
+					<button id="addPoints" type="button" class="btn btn-default {{#unless showAddPoints}}hidden{{/unless}}">Add Points</button>
+					<button id="showDetailView" type="button" class="btn btn-default ">Detail View</button>
+					{{/if}}
+					<label class="{{#unless coordSelected}}hidden{{/unless}}">Coordinate:</label>
+					<button id="deleteCoord" type="button" class="btn btn-danger {{#unless coordSelected}}hidden{{/unless}}">Delete</button>
+				</div>
+			</div>
 
 			<div>
 				<label>Edit Mode:</label>
