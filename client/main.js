@@ -4,26 +4,11 @@ Template.main.rendered = function() {
   var shapeId = null;
   var tmplInst = this;
   init();
-  this.autorun(function() {
+  initSlider();
 
-    if (shapeId !== Session.get('shapeId')) {
-      // delete Template.main.reactiveCanvas;
-      shapeId = Session.get('shapeId');
-      Template.main.reactiveCanvas.cleanup();
-
-      initSlider();
-    }
-    if (shapeId) {
-      initDetailView(tmplInst);
-      Template.main.reactiveCanvas.extendPolygon = Template.main.reactiveCanvas.extendRectangle = function() {
-        return {
-          parentId: shapeId
-        };
-      };
-    } else {
-      Template.main.reactiveCanvas.extendPolygon = Template.main.reactiveCanvas.extendRectangle = function() {};
-    }
-  });
+  if (Router.current().params.shapeId) {
+    initDetailView();
+  }
 };
 
 function initSlider() {
@@ -39,48 +24,49 @@ function initSlider() {
     })
   });
   $('.slider').on('slide', function(scale) {
-    Template.main.reactiveCanvas.setScale($('.slider').val());
+    ReactiveCanvasStore.floorCanvas.setScale($('.slider').val());
   });
 }
 
-function initDetailView(tmplInst) {
-  var canvas = document.getElementById('canvas1');
-  var context = canvas.getContext('2d');
-  Tracker.autorun(function() {
-    Template.main.reactiveCanvas.setShapeForCropping(tmplInst.data.shapeId);
-
-    Template.main.reactiveCanvas.valid = false;
-
-  });
+function initDetailView() {
+  var shapeId = Router.current().params.shapeId;
+  ReactiveCanvasStore.floorCanvas.setShapeForCropping(shapeId);
 }
 
 Template.main.events({
   'change .drawMode': function(e) {
     var val = $('input[name=drawMode]:checked').val();
-    Template.main.reactiveCanvas.insertMode = val;
+    ReactiveCanvasStore.floorCanvas.insertMode = val;
   },
   'click #finishElement': function() {
-    Template.main.reactiveCanvas.finishElementCreation();
+    ReactiveCanvasStore.floorCanvas.finishElementCreation();
   },
   'click #deleteElement': function() {
-    Template.main.reactiveCanvas.selection.get().remove(true);
+    ReactiveCanvasStore.floorCanvas.selection.get().remove(true);
   },
   'click #addPoints': function() {
-    Template.main.reactiveCanvas.enableEditingMode();
+    ReactiveCanvasStore.floorCanvas.enableEditingMode();
   },
   'click #deleteCoord': function() {
-    Template.main.reactiveCanvas.selection.get().deleteSelectedCoord();
+    ReactiveCanvasStore.floorCanvas.selection.get().deleteSelectedCoord();
   },
   'click #showDetailView': function() {
     Router.go('canvas', {
-      shapeId: Template.main.reactiveCanvas.selection.get().id
+      shapeId: ReactiveCanvasStore.floorCanvas.selection.get().id
     });
   },
-  'change #editModeSwitch': function (event) {
-    Template.main.reactiveCanvas.editMode = event.target.checked;
+  'change #editModeSwitch': function(event) {
+    ReactiveCanvasStore.floorCanvas.editMode = event.target.checked;
   },
   'click #createElement': function() {
-    Template.main.reactiveCanvas.createElementAtOrigin();
+    ReactiveCanvasStore.floorCanvas.createShape('Polygon', null, function() {
+      var shapeId = Router.current().params.shapeId;
+      if (shapeId) {
+        return {
+          parentId: shapeId
+        };
+      }
+    });
   }
 });
 
@@ -89,7 +75,7 @@ Template.main.helpers({
     return Session.get('shapeSelectedOnCanvas');
   },
   isCreating: function() {
-    return Session.get('isCreatingElementOnCanvas');
+    return Session.get('isEditingShapeOnCanvas');
   },
   showAddPoints: function() {
     return Session.get('addPoints');
@@ -98,46 +84,59 @@ Template.main.helpers({
     return Session.get('coordSelectedOnCanvas');
   },
   name: function() {
-    if (!Template.main.reactiveCanvas || Template.main.reactiveCanvas.selection.get() === null) {
+    if (!ReactiveCanvasStore.floorCanvas || ReactiveCanvasStore.floorCanvas.selection.get() === null) {
       return;
     }
-    return Template.main.reactiveCanvas.selection.get().id;
+    return ReactiveCanvasStore.floorCanvas.selection.get().id;
   },
   editModeActive: function() {
-    if(Template.main.reactiveCanvas){
-      return Template.main.reactiveCanvas.editMode;
+    if (ReactiveCanvasStore.floorCanvas) {
+      return ReactiveCanvasStore.floorCanvas.editMode;
     }
     return false;
   }
 });
 // initialize the reactiveCanvas and the Rectangles
 init = function() {
-  if (typeof Template.main.reactiveCanvas === 'undefined') {
-    var canvas = document.getElementById('canvas1');
-    Template.main.reactiveCanvas = new ReactiveCanvas('canvas1', Rectangles, Polygons, '/cad.jpg');
-    Template.main.reactiveCanvas.shapeClickedForDetail = function(shapeId) {
-      Router.go('canvas', {
-        shapeId: shapeId
-      });
-    };
+  if (typeof ReactiveCanvasStore.floorCanvas === 'undefined') {
 
-    var context = canvas.getContext('2d');
-    Template.main.reactiveCanvas.scaleFactor = 1.0;
+    var shapesCfg = [{
+      type: 'Rectangle',
+      collection: Rectangles,
+      extendOnCreation: function() {
+        var shapeId = Router.current().params.shapeId;
+        if (shapeId) {
+          return {
+            parentId: shapeId
+          };
+        }
+      },
+      clickedForDetail: function(shapeId) {
+        Router.go('canvas', {
+          shapeId: shapeId
+        });
+      }
+    }, {
+      type: 'Polygon',
+      collection: Polygons,
+      extendOnCreation: function() {
+        var shapeId = Router.current().params.shapeId;
+        if (shapeId) {
+          return {
+            parentId: shapeId
+          };
+        }
+      },
+      clickedForDetail: function(shapeId) {
+        Router.go('canvas', {
+          shapeId: shapeId
+        });
+      }
+    }];
 
-    interval = 5000;
-    setInterval(function() {
-      draw();
-    }, interval);
-    Template.main.reactiveCanvas.redrawParent = draw;
+    ReactiveCanvasStore.floorCanvas = new ReactiveCanvas('floorCanvas', shapesCfg, '/cad.jpg');
+
+  } else {
+    ReactiveCanvasStore.floorCanvas.cleanup();
   }
-};
-
-draw = function() {
-
-  var canvas = document.getElementById('canvas1');
-  if (!canvas) {
-    Template.main.reactiveCanvas.valid = false;
-    return;
-  }
-  Template.main.reactiveCanvas.draw(true);
 };
