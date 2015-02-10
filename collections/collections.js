@@ -1,5 +1,6 @@
 Rectangles = new Mongo.Collection('rectangles');
 Polygons = new Mongo.Collection('polygons');
+Icons = new Mongo.Collection('icons');
 
 if (Meteor.isServer) {
 	Meteor.publish('rectangles', function(id) {
@@ -30,6 +31,23 @@ if (Meteor.isServer) {
 			});
 		} else {
 			return Polygons.find({
+				parentId: {
+					$exists: false
+				}
+			});
+		}
+	});
+	Meteor.publish('icons', function(id) {
+		if (id) {
+			return Icons.find({
+				$or: [{
+					parentId: id
+				}, {
+					_id: id
+				}]
+			});
+		} else {
+			return Icons.find({
 				parentId: {
 					$exists: false
 				}

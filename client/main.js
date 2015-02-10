@@ -7,6 +7,12 @@ Template.main.rendered = function() {
   // if there is a shape id only the childs of the given shape will be displayed
   var shapeId = null;
   var tmplInst = this;
+
+  var container = $('.canvas-wrapper');
+  var canvas = document.getElementById('floorCanvas');
+  console.log(container.width());
+  canvas.width = container.width();
+  
   init();
   initSlider();
 
@@ -20,7 +26,7 @@ function initSlider() {
     start: 1,
     connect: "lower",
     range: {
-      'min': 0,
+      'min': 0.1,
       'max': 3
     },
     format: wNumb({
@@ -134,6 +140,21 @@ init = function() {
         Router.go('canvas', {
           shapeId: shapeId
         });
+      }
+    }, {
+      type: 'StaticRectangle',
+      collection: Icons,
+      resizeable: false,
+      extendOnCreation: function() {
+        var shapeId = Router.current().params.shapeId;
+        if (shapeId) {
+          return {
+            parentId: shapeId
+          };
+        }
+      },
+      clickedForDetail: function(shapeId) {
+        console.log('display some information about this thing here!')
       }
     }];
 

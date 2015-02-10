@@ -23,11 +23,12 @@
 					<select class="form-control drawMode">
 		  				<option>Polygon</option>
 		  				<option>Rectangle</option>
+		  				<option>StaticRectangle</option>
 		  			</select>
 	  			</div>
 				<div class="col-xs-9">
 					<button id="createElement" type="button" class="btn btn-default">create Shape!</button>
-					
+
 					{{#if selected}}
 					<label class="hidden">Area:</label>
 					<button id="finishElement" type="button" class="btn btn-success {{#unless isCreating}}hidden{{/unless}}">Done!</button>
